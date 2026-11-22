@@ -1,5 +1,4 @@
 import express from "express";
-import { getVersions } from "../services/minecraft.js";
 import { requireAuth } from "../middleware/auth.js";
 import os from "os";
 import { exec } from "child_process";
@@ -24,16 +23,14 @@ router.get("/version", async (req, res) => {
 });
 
 router.get("/versions", async (req, res) => {
-  const type = (req.query.type as string) || "PAPER";
-  const versions = await getVersions(type);
-  res.json(versions);
+  const type = ((req.query.type as string) || "NODEJS").toUpperCase();
+  if (type === "PYTHON" || type === "PYTHON3") {
+    return res.json(["3.12", "3.11", "3.10", "3.9"]);
+  }
+  return res.json(["22", "20", "18", "16"]);
 });
 
-// Deprecated endpoint for backward compatibility
-router.get("/paper-versions", async (req, res) => {
-  const versions = await getVersions("PAPER");
-  res.json(versions);
-});
+
 
 
 

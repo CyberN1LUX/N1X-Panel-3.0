@@ -118,8 +118,12 @@ export default function FileManager({ serverId }: { serverId: string }) {
     setPath(path.endsWith("/") ? path + dirName : path + "/" + dirName);
   };
 
+  const isBinaryFile = (name: string): boolean => {
+    return /\.(jar|zip|gz|tar|tgz|bz2|7z|rar|exe|dll|so|dylib|bin|iso|img|png|jpg|jpeg|gif|webp|ico|bmp|tiff|pdf|mp3|mp4|wav|ogg|avi|mov|mkv|webm|flac|aac|woff|woff2|ttf|eot|otf|db|sqlite|sqlite3|pyc|class)$/i.test(name);
+  };
+
   const openFile = async (name: string) => {
-    if (!name.match(/\.(txt|json|yml|yaml|properties|log|conf|ini|sh|bat|cmd|env|toml|xml|md)$/i)) {
+    if (isBinaryFile(name)) {
       showToast("Binary format cannot be directly edited in text editor.", "error");
       return;
     }
@@ -196,7 +200,7 @@ export default function FileManager({ serverId }: { serverId: string }) {
       setActiveModal(null);
       setModalInput("");
       fetchFiles();
-      if (fileName.match(/\.(txt|json|yml|yaml|properties|log|conf|ini|sh|bat|cmd|env|toml|xml|md)$/i)) {
+      if (!isBinaryFile(fileName)) {
         openFile(fileName);
       }
     } catch (e) {

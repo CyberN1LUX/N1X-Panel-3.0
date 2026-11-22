@@ -8,14 +8,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import ServerConsole from "../components/ServerConsole";
 import FileManager from "../components/FileManager";
 import ServerSettings from "../components/ServerSettings";
-import ServerProperties from "../components/ServerProperties";
 import ServerBackups from "../components/ServerBackups";
-import PluginManager from "../components/PluginManager";
-import ModManager from "../components/ModManager";
 import SubUsersManager from "../components/SubUsersManager";
 import ServerSFTP from "../components/ServerSFTP";
 import PlayitTunnel from "./PlayitTunnel";
-import { Puzzle, Box, Network } from "lucide-react";
+import { Network } from "lucide-react";
 import { Settings, Globe } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 
@@ -125,31 +122,9 @@ export default function ServerView() {
     { name: "File Manager", path: `/servers/${id}/files`, exactPath: "files", icon: <Folder size={18} /> },
     { name: "SFTP Details", path: `/servers/${id}/sftp`, exactPath: "sftp", icon: <Network size={18} /> },
     { name: "Sub-Users", path: `/servers/${id}/subusers`, exactPath: "subusers", icon: <Users size={18} /> },
-  ];
-
-  const isProxy = ["VELOCITY", "BUNGEECORD", "WATERFALL"].includes(server?.type?.toUpperCase() || "");
-  const serverTypeUpper = (server?.type || "").toUpperCase();
-  const isPluginSoftware = ["PAPER", "SPIGOT", "BUKKIT", "PURPUR"].includes(serverTypeUpper);
-  const isModSoftware = ["FORGE", "FABRIC", "NEOFORGE", "QUILT"].includes(serverTypeUpper);
-  
-  if (!isProxy) {
-    tabs.splice(1, 0, { name: "Properties", path: `/servers/${id}/properties`, exactPath: "properties", icon: <Sliders size={18} /> });
-  }
-
-  // Only allow plugins for Paper/Spigot/Bukkit/Purpur, strictly disabled for proxies
-  if (!isProxy && isPluginSoftware) {
-    tabs.push({ name: "Plugins", path: `/servers/${id}/plugins`, exactPath: "plugins", icon: <Puzzle size={18} /> });
-  }
-
-  // Only allow mods for Forge/Fabric/NeoForge/Quilt, strictly disabled for proxies
-  if (!isProxy && isModSoftware) {
-    tabs.push({ name: "Mods", path: `/servers/${id}/mods`, exactPath: "mods", icon: <Box size={18} /> });
-  }
-
-  tabs.push(
     { name: "Settings", path: `/servers/${id}/settings`, exactPath: "settings", icon: <Settings size={18} /> },
     { name: "Backup", path: `/servers/${id}/backup`, exactPath: "backup", icon: <Archive size={18} /> }
-  );
+  ];
 
   if (enablePlayit) {
     tabs.push(
@@ -346,14 +321,11 @@ export default function ServerView() {
         <div className="flex-1 flex flex-col relative overflow-hidden bg-transparent min-h-0">
            <Routes>
              <Route path="/" element={<ServerConsole serverId={id!} server={server} />} />
-             <Route path="/properties" element={<ServerProperties serverId={id!} />} />
              <Route path="/files" element={<FileManager serverId={id!} />} />
              <Route path="/sftp" element={<ServerSFTP serverId={id!} server={server} />} />
              <Route path="/subusers" element={<SubUsersManager serverId={id!} />} />
              <Route path="/settings" element={<ServerSettings serverId={id!} server={server} />} />
              <Route path="/backup" element={<ServerBackups serverId={id!} />} />
-             <Route path="/plugins" element={<PluginManager serverId={id!} server={server} />} />
-             <Route path="/mods" element={<ModManager serverId={id!} server={server} />} />
              {enablePlayit && <Route path="/playit" element={<PlayitTunnel serverId={id!} />} />}
            </Routes>
         </div>

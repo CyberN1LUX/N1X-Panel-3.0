@@ -8,17 +8,17 @@ import { useAuth } from '../context/AuthContext';
 
 
 const feedA = [
-    ['https://w.wallhaven.cc/full/1q/wallhaven-1qgvrg.jpg','MC_01','MINECRAFT // OVERWORLD'],
-    ['https://w.wallhaven.cc/full/w5/wallhaven-w5dwyx.png','MC_02','MINECRAFT // SURVIVAL'],
-    ['https://w.wallhaven.cc/full/7j/wallhaven-7jeldy.png','MC_03','MINECRAFT // CREATIVE'],
-    ['https://w.wallhaven.cc/full/gw/wallhaven-gwmwr3.png','MC_04','MINECRAFT // CAVES'],
+    ['https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80','NODE_01','NODE.JS // HIGH PERFORMANCE API'],
+    ['https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80','PY_02','PYTHON // DATA & SCRIPT RUNTIME'],
+    ['https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80','DEV_03','N1X CLOUD // FULLSTACK CONTAINERLESS'],
+    ['https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200&q=80','SRV_04','N1X PANEL // ULTRA-LOW OVERHEAD'],
 ];
 
 const feedB = [
-    ['https://w.wallhaven.cc/full/og/wallhaven-og6gz9.png','MC_05','MINECRAFT // LANDSCAPE'],
-    ['https://w.wallhaven.cc/full/ly/wallhaven-lyjyll.png','MC_06','MINECRAFT // SHADERS'],
-    ['https://w.wallhaven.cc/full/je/wallhaven-jeye2m.png','MC_07','MINECRAFT // EXPLORE'],
-    ['https://w.wallhaven.cc/full/7j/wallhaven-7je6jo.png','MC_08','MINECRAFT // MULTIPLAYER'],
+    ['https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80','SYS_05','HARDWARE // DEDICATED HOSTING'],
+    ['https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=1200&q=80','CODE_06','RUNTIME // ASYNC PROCESS PIPELINE'],
+    ['https://images.unsplash.com/photo-1629654297299-c8506221ca97?auto=format&fit=crop&w=1200&q=80','LINUX_07','DEBIAN / UBUNTU / WINDOWS COMPAT'],
+    ['https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1200&q=80','APP_08','WEB & DISCORD BOTS FLEET'],
 ];
 
 const tickerItems = [

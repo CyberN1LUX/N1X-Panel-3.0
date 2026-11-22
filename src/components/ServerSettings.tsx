@@ -6,8 +6,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import SearchableDropdown from "./SearchableDropdown";
-import CategorizedVersionDropdown from "./CategorizedVersionDropdown";
-import { getJavaVersionForMinecraft } from "../utils/minecraftJava";
 import { parseRam, formatRam } from "../utils/ram";
 
 export default function ServerSettings({ serverId, server }: { serverId: string, server: any }) {
@@ -38,6 +36,7 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
   const [ramInput, setRamInput] = useState<string>(server?.ram !== undefined ? String(server.ram) : "1 GB");
   const [cpuInput, setCpuInput] = useState<number | string>(server?.cpu || 100);
   const [diskInput, setDiskInput] = useState<number | string>(server?.disk || 10);
+  const [portInput, setPortInput] = useState<number | string>(server?.port || 2550);
   const [isSavingResources, setIsSavingResources] = useState<boolean>(false);
   const [resourceMessage, setResourceMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
@@ -54,13 +53,15 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
       await axios.put(`/api/servers/${serverId}/resources`, {
         ram: ramInput,
         cpu: cpuInput,
-        disk: diskInput
+        disk: diskInput,
+        port: Number(portInput)
       }, { headers });
-      setResourceMessage({ text: "Server resources saved successfully! Restart the server to apply updated limits.", type: "success" });
+      setResourceMessage({ text: "Server resources & host port saved successfully! Restart the server to apply updated settings.", type: "success" });
       if (server) {
         server.ram = ramInput;
         server.cpu = Number(cpuInput);
         server.disk = Number(diskInput);
+        server.port = Number(portInput);
       }
     } catch (err: any) {
       setResourceMessage({ text: err.response?.data?.error || err.message || "Failed to update resources.", type: "error" });
@@ -88,17 +89,6 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
       }).catch(() => {});
     }
   }, [user, selectedType]);
-
-  // Synchronize recommended Java version whenever selected Minecraft version changes
-  useEffect(() => {
-    if (selectedVersion) {
-      const autoJava = getJavaVersionForMinecraft(selectedVersion, selectedType);
-      // Auto-update if unset or if switching away from Java 25 (Paper 26.x default)
-      if (!javaVersion || (javaVersion === "25" && !selectedVersion.startsWith("26"))) {
-        setJavaVersion(autoJava);
-      }
-    }
-  }, [selectedVersion, selectedType]);
 
   if (!server) return null;
   const canManage = (user?.role === "admin" || user?.role === "owner") || server.owner === user?.id;
@@ -244,7 +234,7 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
                 {/* RAM Input */}
                 <div>
                   <label className="flex items-center justify-between text-sm text-[#8f8f8f] mb-2 font-medium">
@@ -259,7 +249,7 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
                     className="w-full bg-[#0e0e0e] border border-[#232323] focus:border-white rounded-xl p-3 text-white font-mono text-sm outline-none transition-all"
                   />
                   <div className="flex flex-wrap gap-1.5 mt-2">
-                    {["256 MB", "512 MB", "1 GB", "2 GB", "4 GB", "8 GB"].map((preset) => (
+                    {["256 MB", "512 MB", "1 GB", "2 GB", "4 GB"].map((preset) => (
                       <button
                         key={preset}
                         type="button"
@@ -270,6 +260,24 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* Port Allocation */}
+                <div>
+                  <label className="flex items-center justify-between text-sm text-[#8f8f8f] mb-2 font-medium">
+                    <span className="flex items-center gap-1.5"><Globe className="w-4 h-4 text-theme-400" /> Host Port</span>
+                    <span className="text-[11px] text-theme-400 font-mono">Port {portInput}</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="65535"
+                    value={portInput}
+                    onChange={(e) => setPortInput(e.target.value)}
+                    placeholder="2550"
+                    className="w-full bg-[#0e0e0e] border border-[#232323] focus:border-white rounded-xl p-3 text-white font-mono text-sm outline-none transition-all"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-2 font-mono">Port your app listens on and exposed locally.</p>
                 </div>
 
                 {/* CPU Limit */}
@@ -290,7 +298,7 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 font-mono text-sm">%</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mt-2">
-                    {[25, 50, 100, 150, 200, 400].map((preset) => (
+                    {[25, 50, 100, 150, 200].map((preset) => (
                       <button
                         key={preset}
                         type="button"
@@ -321,7 +329,7 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 font-mono text-xs">GB</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mt-2">
-                    {[5, 10, 20, 50, 100].map((preset) => (
+                    {[5, 10, 20, 50].map((preset) => (
                       <button
                         key={preset}
                         type="button"
@@ -340,10 +348,10 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
                   type="button"
                   onClick={handleSaveResources}
                   disabled={isSavingResources}
-                  className="px-6 py-2.5 bg-theme-600 hover:bg-theme-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-theme-600/20 disabled:opacity-50 flex items-center gap-2 text-sm"
+                  className="px-6 py-2.5 bg-theme-600 hover:bg-theme-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-theme-600/20 disabled:opacity-50 flex items-center gap-2 text-sm cursor-pointer"
                 >
                   {isSavingResources ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {isSavingResources ? "Saving Resources..." : "Save Resources"}
+                  {isSavingResources ? "Saving Resources & Port..." : "Save Resources & Port"}
                 </button>
               </div>
             </div>
@@ -353,247 +361,100 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
             
             {/* RUNTIME CONFIGURATION */}
             {(() => {
-              const upperType = (server?.type || "").toUpperCase();
-              const isGeneric = ["NODEJS", "NODE", "PYTHON", "PYTHON3"].includes(upperType);
-              const isNode = ["NODEJS", "NODE"].includes(upperType);
-              const isPy = ["PYTHON", "PYTHON3"].includes(upperType);
+              const currentType = (selectedType || server?.type || "NODEJS").toUpperCase();
+              const isNode = currentType === "NODEJS" || currentType === "NODE";
+              const isPy = currentType === "PYTHON" || currentType === "PYTHON3";
 
-              if (isGeneric) {
-                return (
-                  <div className="bg-black/40 dark:bg-black/40 backdrop-blur-xl border border-border p-6 md:p-8 rounded-3xl shadow-[0_0_40px_-15px_rgba(0,0,0,0.5)] ring-1 ring-border-subtle relative z-30 group hover:bg-black/60 transition-colors mb-8">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-theme-500 font-bold flex items-center gap-2">
-                        {isNode ? <Code2 className="w-5 h-5 text-theme-500" /> : <TerminalSquare className="w-5 h-5 text-theme-500" />}
-                        {isNode ? "Node.js Runtime Environment" : "Python Runtime Environment"}
-                      </h3>
-                      <span className="flex items-center gap-1.5 text-xs font-mono bg-white/10 text-white/90 px-2.5 py-1 rounded-full border border-white/10">
-                        <Lock className="w-3 h-3 text-theme-400" /> Fixed Runtime
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground text-sm mb-4">
-                      Dedicated standalone code runtime. Upload your project scripts, packages, and dependencies in the File Manager and start them in the Console.
-                    </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-2">Runtime Platform</label>
-                        <div className="w-full bg-card/60 border border-border rounded-xl px-4 py-3 text-foreground font-mono text-sm flex items-center justify-between opacity-80 cursor-not-allowed">
-                          <span>{isNode ? "Node.js (JavaScript / TypeScript)" : "Python (Python 3.x)"}</span>
-                          <span className="text-xs text-muted-foreground">Fixed</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-2">Runtime Version</label>
-                        <SearchableDropdown
-                          value={selectedVersion}
-                          onChange={setSelectedVersion}
-                          options={versions.map(v => ({ value: v, label: isNode ? `Node.js v${v}` : `Python ${v}` }))}
-                          placeholder="Select Version"
-                          searchPlaceholder="Search versions..."
-                          disabled={isChangingVersion}
-                          className="font-mono bg-card"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-muted-foreground mb-2">Startup Command</label>
-                        <input
-                          type="text"
-                          value={startupCommand}
-                          onChange={e => setStartupCommand(e.target.value)}
-                          placeholder={isNode ? "e.g. node index.js or npm start" : "e.g. python3 -u main.py"}
-                          disabled={isChangingVersion}
-                          className="w-full bg-card border border-border focus:border-theme-600 rounded-xl px-4 py-3 text-foreground transition-all outline-none font-mono text-sm"
-                        />
-                        <p className="text-xs text-muted-foreground font-mono mt-1.5">
-                          {isNode ? "Leave empty to automatically execute index.js, app.js, or package.json start script." : "Leave empty to automatically execute main.py, app.py, or bot.py."}
-                        </p>
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-muted-foreground mb-2">Custom Docker Image (Optional)</label>
-                        <input
-                          type="text"
-                          value={dockerImage}
-                          onChange={e => setDockerImage(e.target.value)}
-                          placeholder={isNode ? "node:20-alpine" : "python:3.11-slim"}
-                          disabled={isChangingVersion}
-                          className="w-full bg-card border border-border focus:border-theme-600 rounded-xl px-4 py-3 text-foreground transition-all outline-none font-mono text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end mt-4">
-                      <button 
-                        onClick={handleChangeVersion}
-                        disabled={isChangingVersion}
-                        className="px-6 py-3 bg-theme-600/10 hover:bg-theme-600/20 text-theme-600 font-medium rounded-xl border border-theme-600/20 transition-all disabled:opacity-50 flex items-center min-w-[160px] justify-center h-[50px]"
-                      >
-                        {isChangingVersion ? "Updating..." : "Update Runtime"}
-                      </button>
-                    </div>
-
-                    {isChangingVersion && (
-                      <div className="mt-6 p-4 border border-zinc-800 bg-muted rounded-xl">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium text-theme-500">Updating runtime configuration...</span>
-                          <span className="text-sm font-mono text-theme-500/80">{versionProgress}%</span>
-                        </div>
-                        <div className="w-full bg-zinc-800/50 rounded-full h-2.5 overflow-hidden">
-                          <div
-                            className="bg-theme-600 h-2.5 rounded-full transition-all duration-300 ease-out"
-                            style={{ width: `${versionProgress}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              const autoDetectedJava = getJavaVersionForMinecraft(selectedVersion, selectedType);
+              const versionList = isPy ? ["3.12", "3.11", "3.10", "3.9"] : ["22", "20", "18", "16"];
 
               return (
                 <div className="bg-black/40 dark:bg-black/40 backdrop-blur-xl border border-border p-6 md:p-8 rounded-3xl shadow-[0_0_40px_-15px_rgba(0,0,0,0.5)] ring-1 ring-border-subtle relative z-30 group hover:bg-black/60 transition-colors mb-8">
-                  <h3 className="text-theme-500 font-bold mb-2 flex items-center">
-                    <Sliders className="w-5 h-5 mr-2" /> Minecraft Runtime
-                  </h3>
-                  <p className="text-muted-foreground text-sm mb-4">
-                    Configure server software, Java version, and Docker image.
-                    <span className="text-theme-500/80 block mt-1">
-                      WARNING: The server MUST be stopped before changing the runtime. A backup will be created automatically.
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-theme-500 font-bold flex items-center gap-2">
+                      {isNode ? <Code2 className="w-5 h-5 text-theme-500" /> : <TerminalSquare className="w-5 h-5 text-theme-500" />}
+                      Application Runtime Configuration
+                    </h3>
+                    <span className="flex items-center gap-1.5 text-xs font-mono bg-white/10 text-white/90 px-2.5 py-1 rounded-full border border-white/10">
+                      <Lock className="w-3 h-3 text-theme-400" /> 100% Pure Node.js
                     </span>
+                  </div>
+                  <p className="text-muted-foreground text-sm mb-5">
+                    Configure your application platform, version, and custom startup entry file without Docker overhead.
                   </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                    {/* Platform Selector */}
                     <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-2">Software Type</label>
-                      <select
-                        value={selectedType}
-                        onChange={e => setSelectedType(e.target.value)}
-                        disabled={isChangingVersion}
-                        className="w-full bg-card border border-border focus:border-theme-600 rounded-xl px-4 py-3 text-foreground transition-all outline-none"
-                      >
-                        <option value="PAPER">Paper</option>
-                        <option value="SPIGOT">Spigot</option>
-                        <option value="FABRIC">Fabric</option>
-                        <option value="FORGE">Forge</option>
-                        <option value="BUNGEECORD">BungeeCord</option>
-                        <option value="VELOCITY">Velocity</option>
-                      </select>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">Runtime Platform</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedType("NODEJS");
+                            if (isPy) setSelectedVersion("20");
+                          }}
+                          className={`p-3 rounded-xl border text-sm font-medium flex items-center justify-center gap-2 transition-all ${isNode ? "bg-white text-black border-white font-bold shadow-md" : "bg-card border-border text-muted-foreground hover:text-white"}`}
+                        >
+                          <Code2 className="w-4 h-4" /> Node.js
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedType("PYTHON");
+                            if (isNode) setSelectedVersion("3.12");
+                          }}
+                          className={`p-3 rounded-xl border text-sm font-medium flex items-center justify-center gap-2 transition-all ${isPy ? "bg-white text-black border-white font-bold shadow-md" : "bg-card border-border text-muted-foreground hover:text-white"}`}
+                        >
+                          <TerminalSquare className="w-4 h-4" /> Python
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Version Selector */}
                     <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-2">Software Version</label>
-                      <CategorizedVersionDropdown
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">Runtime Version</label>
+                      <select
                         value={selectedVersion}
-                        onChange={setSelectedVersion}
-                        versions={versions}
-                        software={selectedType}
-                        disabled={isChangingVersion}
-                        placeholder="Select Version"
-                        className="font-mono bg-card"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="block text-sm font-medium text-muted-foreground">Java Version</label>
-                        {javaVersion ? (
-                          <button
-                            type="button"
-                            onClick={() => setJavaVersion("")}
-                            className="text-xs text-theme-400 hover:text-theme-300 underline cursor-pointer"
-                          >
-                            Reset to Auto-detect
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-emerald-400 font-mono flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                            <Sparkles className="w-3 h-3" /> Auto: Java {autoDetectedJava}
-                          </span>
-                        )}
-                      </div>
-                      <select
-                        value={javaVersion}
-                        onChange={e => setJavaVersion(e.target.value)}
+                        onChange={(e) => setSelectedVersion(e.target.value)}
                         disabled={isChangingVersion}
                         className="w-full bg-card border border-border focus:border-theme-600 rounded-xl px-4 py-3 text-foreground transition-all outline-none font-mono text-sm"
                       >
-                        <option value="">Auto-detect (Java {autoDetectedJava} Recommended)</option>
-                        <option value="26">Java 26 (Latest JDK)</option>
-                        <option value="25">Java 25 (Required for Paper 26.x)</option>
-                        <option value="21">Java 21 (LTS • Recommended for 1.20.5 - 1.21.x)</option>
-                        <option value="17">Java 17 (LTS • Recommended for 1.18 - 1.20.4)</option>
-                        <option value="16">Java 16 (Recommended for 1.17)</option>
-                        <option value="11">Java 11 (Recommended for 1.13 - 1.16)</option>
-                        <option value="8">Java 8 (Legacy • Required for 1.12.2 & below)</option>
+                        {versionList.map((ver) => (
+                          <option key={ver} value={ver}>
+                            {isNode ? `Node.js v${ver}` : `Python ${ver}`}
+                          </option>
+                        ))}
                       </select>
-                      <div className="mt-2">
-                        {!javaVersion ? (
-                          <p className="text-xs text-emerald-400/90 font-mono flex items-center gap-1.5 bg-emerald-500/5 px-2.5 py-1.5 rounded-lg border border-emerald-500/10">
-                            <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-                            <span>Auto-detection active: <strong>Java {autoDetectedJava}</strong> will be used for {selectedVersion || 'this version'}</span>
-                          </p>
-                        ) : (
-                          <p className="text-xs text-amber-400/90 font-mono flex items-center gap-1.5 bg-amber-500/5 px-2.5 py-1.5 rounded-lg border border-amber-500/10">
-                            <SlidersHorizontal className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-                            <span>Manual override: <strong>Java {javaVersion}</strong> selected {javaVersion !== autoDetectedJava && `(Auto recommends Java ${autoDetectedJava})`}</span>
-                          </p>
-                        )}
-                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-2">Docker Image</label>
-                      <input
-                        type="text"
-                        value={dockerImage}
-                        onChange={e => setDockerImage(e.target.value)}
-                        placeholder="e.g. ghcr.io/pterodactyl/yolks:java_17"
-                        disabled={isChangingVersion}
-                        className="w-full bg-card border border-border focus:border-theme-600 rounded-xl px-4 py-3 text-foreground transition-all outline-none font-mono text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-2">Server JAR</label>
-                      <input
-                        type="text"
-                        value={serverJar}
-                        onChange={e => setServerJar(e.target.value)}
-                        placeholder="e.g. server.jar"
-                        disabled={isChangingVersion}
-                        className="w-full bg-card border border-border focus:border-theme-600 rounded-xl px-4 py-3 text-foreground transition-all outline-none font-mono text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-2">Startup Command</label>
+
+                    {/* Startup Command */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">Custom Startup Command (Optional)</label>
                       <input
                         type="text"
                         value={startupCommand}
-                        onChange={e => setStartupCommand(e.target.value)}
-                        placeholder="e.g. java -Xms1G -Xmx4G -jar server.jar --nogui"
+                        onChange={(e) => setStartupCommand(e.target.value)}
+                        placeholder={isNode ? "e.g. node index.js or npm start" : "e.g. python -u main.py"}
                         disabled={isChangingVersion}
                         className="w-full bg-card border border-border focus:border-theme-600 rounded-xl px-4 py-3 text-foreground transition-all outline-none font-mono text-sm"
                       />
+                      <p className="text-xs text-muted-foreground font-mono mt-1.5">
+                        {isNode ? "Leave empty to automatically detect and run index.js, app.js, or package.json start script." : "Leave empty to automatically execute main.py, app.py, or bot.py."}
+                      </p>
                     </div>
                   </div>
-                  
-                  {server?.version?.startsWith("26") && selectedVersion && !selectedVersion.startsWith("26") && (
-                    <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3">
-                      <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                      <div className="text-xs text-amber-300/90 leading-relaxed">
-                        <strong className="text-amber-200">Safe Downgrade Protection Active:</strong> Changing from {server.version} to {selectedVersion} will automatically create a full backup in your Backups tab and switch the runtime environment to <strong>Java {autoDetectedJava}</strong>. Incompatible world data is safely archived so your server starts cleanly without missing-dimensions crashes.
-                      </div>
-                    </div>
-                  )}
 
                   <div className="flex justify-end mt-4">
                     <button 
                       onClick={handleChangeVersion}
                       disabled={isChangingVersion}
-                      className="px-6 py-3 bg-theme-600/10 hover:bg-theme-600/20 text-theme-600 font-medium rounded-xl border border-theme-600/20 transition-all disabled:opacity-50 flex items-center min-w-[160px] justify-center h-[50px]"
+                      className="px-6 py-3 bg-theme-600 hover:bg-theme-500 text-white font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center min-w-[160px] justify-center h-[48px] shadow-lg shadow-theme-600/20 cursor-pointer text-sm"
                     >
+                      {isChangingVersion ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                       {isChangingVersion ? "Updating..." : "Update Runtime"}
                     </button>
                   </div>
+
                   {isChangingVersion && (
                     <div className="mt-6 p-4 border border-zinc-800 bg-muted rounded-xl">
                       <div className="flex justify-between items-center mb-2">

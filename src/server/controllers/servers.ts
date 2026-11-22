@@ -14,8 +14,6 @@ import {
 } from "../services/runtime.js";
 import { getLocalProcessInfo } from "../services/local.js";
 import { createSftpUser, deleteSftpUser } from "../services/sftp.js";
-import { downloadJar } from "../services/jarDownloader.js";
-import { getJavaVersionForMinecraft } from "../../utils/minecraftJava.js";
 import { parseRam } from "../../utils/ram.js";
 import crypto from "crypto";
 import fs from "fs-extra";
@@ -178,9 +176,9 @@ export const createServer = async (req: Request, res: Response) => {
     ipAlias: ipAlias || "",
     runtimeType: "local",
     nodeId: nodeId || "local",
-    type: type || "PAPER",
-    version: version || "26.3",
-    javaVersion: javaVersion || "",
+    type: type || "nodejs",
+    version: version || "20",
+    javaVersion: "",
     theme: theme || "default",
     status: "installing",
     createdAt: new Date().toISOString(),
@@ -201,8 +199,17 @@ export const createServer = async (req: Request, res: Response) => {
   try {
     const serverDir = path.join(process.cwd(), ".data", "servers", id);
     await fs.ensureDir(serverDir);
-    const upperType = (type || "PAPER").toUpperCase();
-    if (upperType === "NODEJS" || upperType === "NODE") {
+    const upperType = (type || "NODEJS").toUpperCase();
+    if (upperType === "PYTHON" || upperType === "PYTHON3") {
+      const mainPath = path.join(serverDir, "main.py");
+      const reqPath = path.join(serverDir, "requirements.txt");
+      if (!fs.existsSync(mainPath)) {
+        await fs.writeFile(mainPath, `# Python Application on N1X Panel\nimport os\nimport sys\nfrom http.server import HTTPServer, BaseHTTPRequestHandler\n\nport = int(os.environ.get("SERVER_PORT", os.environ.get("PORT", ${port})))\n\nprint("==============================================", flush=True)\nprint("🐍 Python Application Running", flush=True)\nprint(f"Python Version: {sys.version}", flush=True)\nprint(f"Listening Port: {port}", flush=True)\nprint("Upload your files in File Manager to customize!", flush=True)\nprint("==============================================", flush=True)\n\nclass RequestHandler(BaseHTTPRequestHandler):\n    def do_GET(self):\n        self.send_response(200)\n        self.send_header('Content-type', 'application/json')\n        self.end_headers()\n        self.wfile.write(b'{"status": "online", "runtime": "python"}')\n\n    def log_message(self, format, *args):\n        print(f"[{self.log_date_time_string()}] {format % args}", flush=True)\n\nserver = HTTPServer(('0.0.0.0', port), RequestHandler)\nprint(f"[Server] Listening on http://0.0.0.0:{port}", flush=True)\n\ntry:\n    server.serve_forever()\nexcept KeyboardInterrupt:\n    print("\\nStopping server...", flush=True)\n    server.server_close()\n`);
+      }
+      if (!fs.existsSync(reqPath)) {
+        await fs.writeFile(reqPath, "# Add python dependencies here\n");
+      }
+    } else {
       const indexPath = path.join(serverDir, "index.js");
       const pkgPath = path.join(serverDir, "package.json");
       if (!fs.existsSync(indexPath)) {
@@ -219,34 +226,6 @@ export const createServer = async (req: Request, res: Response) => {
           },
           dependencies: {}
         }, null, 2));
-      }
-    } else if (upperType === "PYTHON" || upperType === "PYTHON3") {
-      const mainPath = path.join(serverDir, "main.py");
-      const reqPath = path.join(serverDir, "requirements.txt");
-      if (!fs.existsSync(mainPath)) {
-        await fs.writeFile(mainPath, `# Python Application on N1X Panel\nimport os\nimport sys\nfrom http.server import HTTPServer, BaseHTTPRequestHandler\n\nport = int(os.environ.get("SERVER_PORT", os.environ.get("PORT", ${port})))\n\nprint("==============================================", flush=True)\nprint("🐍 Python Application Running", flush=True)\nprint(f"Python Version: {sys.version}", flush=True)\nprint(f"Listening Port: {port}", flush=True)\nprint("Upload your files in File Manager to customize!", flush=True)\nprint("==============================================", flush=True)\n\nclass RequestHandler(BaseHTTPRequestHandler):\n    def do_GET(self):\n        self.send_response(200)\n        self.send_header('Content-type', 'application/json')\n        self.end_headers()\n        self.wfile.write(b'{"status": "online", "runtime": "python"}')\n\n    def log_message(self, format, *args):\n        print(f"[{self.log_date_time_string()}] {format % args}", flush=True)\n\nserver = HTTPServer(('0.0.0.0', port), RequestHandler)\nprint(f"[Server] Listening on http://0.0.0.0:{port}", flush=True)\n\ntry:\n    server.serve_forever()\nexcept KeyboardInterrupt:\n    print("\\nStopping server...", flush=True)\n    server.server_close()\n`);
-      }
-      if (!fs.existsSync(reqPath)) {
-        await fs.writeFile(reqPath, "# Add python dependencies here\n");
-      }
-    } else {
-      // Minecraft Server Pre-seeding
-      const eulaPath = path.join(serverDir, "eula.txt");
-      if (!fs.existsSync(eulaPath)) {
-        await fs.writeFile(eulaPath, "eula=true\n");
-      }
-      const propsPath = path.join(serverDir, "server.properties");
-      if (!fs.existsSync(propsPath)) {
-        await fs.writeFile(propsPath, `server-port=${port}\nquery.port=${port}\nenable-rcon=true\nrcon.port=${parseInt(port) + 10}\nrcon.password=admin\nmotd=A Minecraft Server on N1X Panel\n`);
-      }
-      const jarPath = path.join(serverDir, "server.jar");
-      if (!fs.existsSync(jarPath)) {
-        try {
-          console.log(`[createServer] Downloading initial server.jar for ${name} (${upperType} ${version})...`);
-          await downloadJar(upperType, version || "26.2", jarPath);
-        } catch (dlErr: any) {
-          console.warn("[createServer] Initial jar download deferred to background:", dlErr.message);
-        }
       }
     }
   } catch (seedErr) {
@@ -392,20 +371,7 @@ export const startServer = async (req: Request, res: Response) => {
       await writeJSON("servers.json", servers);
     }
 
-    // Ensure server.jar is present for Minecraft servers before boot
-    const upperType = (server.type || "PAPER").toUpperCase();
-    if (!["NODEJS", "NODE", "PYTHON", "PYTHON3"].includes(upperType)) {
-      const jarPath = path.join(serverDir, "server.jar");
-      if (!fs.existsSync(jarPath)) {
-        try {
-          console.log(`[startServer] server.jar missing for ${server.name || server.id}. Downloading now...`);
-          await downloadJar(server.type || "paper", server.version || "26.2", jarPath);
-        } catch (dlErr: any) {
-          console.warn(`[startServer] JAR pre-download warning: ${dlErr.message}`);
-        }
-      }
-    }
-    
+
     // PRE-FLIGHT CHECKS
     try {
       // 1. Check for stale session locks and remove them if server is stopped
@@ -706,105 +672,15 @@ export const changeServerVersion = async (req: Request, res: Response) => {
       console.warn("[changeServerVersion] Pre-switch backup deferred:", bErr);
     }
 
-    // Auto-resolve or validate recommended Java version for Minecraft
-    if (!isGeneric) {
-      const recommendedJava = getJavaVersionForMinecraft(version, effectiveSoftware);
-      const prevAutoJava = getJavaVersionForMinecraft(oldVersion, server.type);
-      // If javaVersion was omitted, empty, or matched the previous auto-detected Java (e.g. was 25 for 26.x), update to recommendedJava!
-      if (!javaVersion || javaVersion === "" || javaVersion === prevAutoJava || (oldVersion?.startsWith("26") && !version.startsWith("26") && javaVersion === "25")) {
-        server.javaVersion = recommendedJava;
-      } else {
-        server.javaVersion = javaVersion;
-      }
-    } else if (javaVersion !== undefined) {
-      server.javaVersion = javaVersion;
-    }
-
-    // Clean up outdated binary caches and remapped libraries from previous versions
-    const cleanupDirs = [
-      path.join(serverDir, "cache"),
-      path.join(serverDir, ".paper-remapped"),
-      path.join(serverDir, "libraries"),
-      path.join(serverDir, "patches")
-    ];
-    for (const d of cleanupDirs) {
-      try {
-        if (await fs.pathExists(d)) {
-          await fs.remove(d);
-        }
-      } catch (e) {}
-    }
-
-    // Safe Downgrade: If switching from 26.x to 1.21.x or lower, higher-version level.dat has incompatible dimension format
-    // Archive world to world_archive_... so Paper doesn't crash on "No key dimensions in MapLike"
-    const isDowngradingFrom26 = Boolean(oldVersion && oldVersion.startsWith("26") && !version.startsWith("26"));
-    const worldDir = path.join(serverDir, "world");
-    const levelDatPath = path.join(worldDir, "level.dat");
-
-    if (isDowngradingFrom26 && await fs.pathExists(levelDatPath)) {
-      console.log(`[changeServerVersion] Downgrade detected from 26.x to ${version}. Archiving incompatible world data to prevent crash...`);
-      const ts = Date.now();
-      const worldArchiveDir = path.join(serverDir, `world_archive_${oldVersion}_${ts}`);
-      try {
-        await fs.move(worldDir, worldArchiveDir);
-        const netherDir = path.join(serverDir, "world_nether");
-        if (await fs.pathExists(netherDir)) {
-          await fs.move(netherDir, path.join(serverDir, `world_nether_archive_${oldVersion}_${ts}`)).catch(() => {});
-        }
-        const endDir = path.join(serverDir, "world_the_end");
-        if (await fs.pathExists(endDir)) {
-          await fs.move(endDir, path.join(serverDir, `world_the_end_archive_${oldVersion}_${ts}`)).catch(() => {});
-        }
-      } catch (mvErr) {
-        console.warn("[changeServerVersion] World archive warning:", mvErr);
-      }
-    }
-
-    const filesToDelete = [
-      "paper-global.yml", "paper-world-defaults.yml", "paper.yml",
-      "config/paper-global.yml", "config/paper-world-defaults.yml",
-      "spigot.yml", "bukkit.yml",
-      "world/data/random_sequences.dat", "world/session.lock"
-    ];
-    
-    for (const file of filesToDelete) {
-      const filePath = path.join(serverDir, file);
-      try {
-        if (await fs.pathExists(filePath)) {
-          await fs.remove(filePath);
-        }
-      } catch (e) {
-        console.error(`Failed to delete ${file}`, e);
-      }
-    }
-    
     server.version = version;
     if (type) {
-      server.type = type;
-    }
-    if (dockerImage !== undefined) {
-      server.dockerImage = dockerImage;
-    }
-    if (serverJar !== undefined) {
-      server.serverJar = serverJar;
+      server.type = type.toLowerCase();
     }
     if (startupCommand !== undefined) {
       server.startupCommand = startupCommand;
     }
 
-    // When changing version for Minecraft servers, download the new JAR
-    const upperType = (server.type || type || "PAPER").toUpperCase();
-    if (!["NODEJS", "NODE", "PYTHON", "PYTHON3"].includes(upperType)) {
-      const jarPath = path.join(serverDir, "server.jar");
-      try {
-        console.log(`[changeServerVersion] Downloading new server.jar for ${server.name || id} (${upperType} ${version})...`);
-        await downloadJar(type || server.type || "paper", version, jarPath);
-      } catch (dlErr: any) {
-        console.warn(`[changeServerVersion] Jar download warning during version switch: ${dlErr.message}`);
-      }
-    }
-
-    // Recreate container with new version env
+    // Recreate runtime instance
     const newContainerId = await createServerRuntime(server);
     server.containerId = newContainerId;
     
@@ -1784,7 +1660,7 @@ export const getModrinthProjectVersions = async (req: Request, res: Response) =>
 export const updateResources = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { ram, cpu, disk } = req.body;
+    const { ram, cpu, disk, port } = req.body;
     const servers = await readJSON("servers.json") || [];
     const server = servers.find((s: any) => s.id === id);
     if (!server) return res.status(404).json({ error: "Server not found" });
@@ -1801,6 +1677,9 @@ export const updateResources = async (req: Request, res: Response) => {
     }
     if (disk !== undefined) {
       server.disk = Number(disk);
+    }
+    if (port !== undefined && Number(port) > 0) {
+      server.port = Number(port);
     }
     await writeJSON("servers.json", servers);
 

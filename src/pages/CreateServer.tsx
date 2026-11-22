@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
-import CategorizedVersionDropdown from "../components/CategorizedVersionDropdown";
-import { getJavaVersionForMinecraft } from "../utils/minecraftJava";
 import { formatRam, parseRam } from "../utils/ram";
 import {
   ArrowLeft, Server, AlertTriangle, AlignLeft, MemoryStick as MemoryStickIcon,
@@ -100,21 +98,10 @@ const CPU_MAP: Record<string, number> = {
   '8 GB': 200, '16 GB': 300, '24 GB': 400, '32 GB': 500
 };
 
-const MINECRAFT_SOFTWARE = [
-  {id:'paper',name:'Paper',desc:'High Performance',icon: Zap},
-  {id:'spigot',name:'Spigot',desc:'Classic Plugins',icon: Wrench},
-  {id:'fabric',name:'Fabric',desc:'Lightweight Mods',icon: Feather},
-  {id:'forge',name:'Forge',desc:'Classic Modpack',icon: Wrench},
-  {id:'bungeecord',name:'BungeeCord',desc:'Classic Proxy',icon: Network},
-  {id:'velocity',name:'Velocity',desc:'Next-gen Proxy',icon: FastForward}
+const SOFTWARE = [
+  {id:'nodejs',name:'Node.js',desc:'JS / TS Application & Discord Bots (Express, Next.js, Fastify)',icon: Code2},
+  {id:'python',name:'Python',desc:'Python 3.x Application, Automation & APIs (FastAPI, Flask, Django)',icon: TerminalSquare}
 ];
-
-const APPLICATION_SOFTWARE = [
-  {id:'nodejs',name:'Node.js',desc:'JS / TS Runtime & Discord Bots',icon: Code2},
-  {id:'python',name:'Python',desc:'Python 3.x Runtime & Scripts',icon: TerminalSquare}
-];
-
-const SOFTWARE = [...MINECRAFT_SOFTWARE, ...APPLICATION_SOFTWARE];
 
 const STEPS = ['IDENTITY','RESOURCES','ACCESS','SOFTWARE','REVIEW'];
 
@@ -210,8 +197,8 @@ export default function CreateServer() {
   const portCheckIdRef = useRef(0);
   
   const [state, setState] = useState({
-    name: '', desc: '', ram: '4 GB', cpu: 150, disk: 10, ip: '', port: 25565, runtimeType: 'local', 
-    owner: user?.id || '', node: '', software: 'paper', version: '26.3', auto: true
+    name: '', desc: '', ram: '1 GB', cpu: 100, disk: 10, ip: '', port: 3000, runtimeType: 'local', 
+    owner: user?.id || '', node: '', software: 'nodejs', version: '20', auto: true
   });
 
   useEffect(() => {
@@ -881,93 +868,67 @@ export default function CreateServer() {
                 <div className="step-content space-y-6">
                   <div>
                     <div className="flex items-center gap-3 mb-4">
-                      <span className="font-mono text-xs text-[#4c4c4c]">04A</span>
-                      <h2 className="font-display font-bold tracking-wide text-sm text-white">MINECRAFT ENGINES</h2>
+                      <span className="font-mono text-xs text-[#4c4c4c]">04</span>
+                      <h2 className="font-display font-bold tracking-wide text-sm text-white">SELECT APPLICATION RUNTIME</h2>
                       <span className="flex-1 h-px bg-[#232323]"></span>
                     </div>
                     
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                      {MINECRAFT_SOFTWARE.map(s => {
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {SOFTWARE.map(s => {
                         const Icon = s.icon;
+                        const isSelected = state.software === s.id;
                         return (
                           <button 
                             key={s.id} 
                             type="button" 
-                            onClick={() => updateState('software', s.id)}
-                            className={`sel-card soft-card p-4 flex flex-col items-center text-center ${state.software === s.id ? 'selected' : ''}`}
+                            onClick={() => {
+                              updateState('software', s.id);
+                              if (s.id === 'nodejs' && state.port === 8000) updateState('port', 3000);
+                              if (s.id === 'python' && state.port === 3000) updateState('port', 8000);
+                            }}
+                            className={`sel-card soft-card p-5 flex items-center gap-4 text-left transition-all ${isSelected ? 'selected border-white bg-white/5' : ''}`}
                           >
                             <span className="tick"><Check className="w-3 h-3 stroke-[3]" /></span>
-                            <Icon className="ic w-6 h-6 mb-2.5" />
-                            <span className="font-display font-semibold text-sm text-white">{s.name}</span>
-                            <span className="text-[10px] text-[#4c4c4c] mt-1 leading-tight">{s.desc}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="font-mono text-xs text-[#4c4c4c]">04B</span>
-                      <h2 className="font-display font-bold tracking-wide text-sm text-white">APPLICATION & SCRIPT RUNTIMES</h2>
-                      <span className="text-[10px] font-mono uppercase bg-white/10 px-2 py-0.5 rounded text-white tracking-widest">Non-Minecraft</span>
-                      <span className="flex-1 h-px bg-[#232323]"></span>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {APPLICATION_SOFTWARE.map(s => {
-                        const Icon = s.icon;
-                        return (
-                          <button 
-                            key={s.id} 
-                            type="button" 
-                            onClick={() => updateState('software', s.id)}
-                            className={`sel-card soft-card p-4 flex items-center gap-4 text-left ${state.software === s.id ? 'selected' : ''}`}
-                          >
-                            <span className="tick"><Check className="w-3 h-3 stroke-[3]" /></span>
-                            <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                              <Icon className="ic w-5 h-5 text-white" />
+                            <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                              <Icon className="ic w-6 h-6 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="font-display font-semibold text-sm text-white">{s.name}</span>
-                                <span className="text-[9px] font-mono bg-white/10 text-white/80 px-1.5 py-0.5 rounded">Standalone</span>
+                                <span className="font-display font-semibold text-base text-white">{s.name}</span>
+                                <span className="text-[10px] font-mono bg-white/10 text-white/80 px-2 py-0.5 rounded">Native</span>
                               </div>
-                              <span className="text-[11px] text-[#8f8f8f] block mt-0.5 leading-snug">{s.desc}</span>
+                              <span className="text-xs text-[#8f8f8f] block mt-1 leading-snug">{s.desc}</span>
                             </div>
                           </button>
                         );
                       })}
                     </div>
 
-                    {['nodejs', 'python'].includes(state.software) && (
-                      <div className="mt-3 p-3 bg-white/[0.03] border border-white/10 rounded-lg flex items-start gap-2.5">
-                        <Info className="w-4 h-4 text-[#8f8f8f] shrink-0 mt-0.5" />
-                        <p className="text-xs text-[#8f8f8f] font-mono leading-relaxed">
-                          Standalone runtime selected: Minecraft game features will be disabled. You will be able to upload your code files (such as <span className="text-white">index.js</span> or <span className="text-white">main.py</span>) via File Manager and start them in the Console.
-                        </p>
-                      </div>
-                    )}
+                    <div className="mt-4 p-4 bg-white/[0.03] border border-white/10 rounded-xl flex items-start gap-3">
+                      <Info className="w-4 h-4 text-theme-400 shrink-0 mt-0.5" />
+                      <p className="text-xs text-[#8f8f8f] font-mono leading-relaxed">
+                        Deploy your application directly on Node.js / Python with zero container overhead. Upload and edit code in File Manager, customize packages, and monitor terminal in real-time.
+                      </p>
+                    </div>
                   </div>
 
                   <div>
-                    <label className="flex items-center gap-2 text-sm text-[#8f8f8f] mb-2.5">
-                      <GitBranch className="w-4 h-4" /> {['nodejs', 'python'].includes(state.software) ? 'Runtime Version' : 'Software Version'}
+                    <label className="flex items-center gap-2 text-sm text-[#8f8f8f] mb-2.5 font-medium">
+                      <GitBranch className="w-4 h-4" /> Runtime Version
                     </label>
 
-                    <CategorizedVersionDropdown
-                      value={state.version}
-                      onChange={(v: string) => updateState('version', v)}
-                      versions={versions}
-                      software={state.software}
-                      placeholder="Select a version..."
-                    />
-                    {!['nodejs', 'python'].includes(state.software) && (
-                      <div className="mt-2.5 flex items-center gap-1.5 text-xs text-emerald-400 font-mono bg-emerald-500/5 px-2.5 py-1.5 rounded-lg border border-emerald-500/10">
-                        <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-                        <span>Java Auto-detect: <strong>Java {getJavaVersionForMinecraft(state.version, state.software)}</strong> will be automatically provisioned</span>
-                      </div>
-                    )}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {(versions.length > 0 ? versions : (state.software === 'python' ? ['3.12', '3.11', '3.10', '3.9'] : ['22', '20', '18', '16'])).map((ver) => (
+                        <button
+                          key={ver}
+                          type="button"
+                          onClick={() => updateState('version', ver)}
+                          className={`p-3 rounded-xl border text-sm font-mono font-medium transition-all text-center ${state.version === ver ? 'bg-white text-black border-white font-bold shadow-md' : 'bg-[#0e0e0e] border-[#232323] text-zinc-300 hover:border-zinc-500'}`}
+                        >
+                          {state.software === 'nodejs' ? `Node.js v${ver}` : `Python ${ver}`}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -996,7 +957,6 @@ export default function CreateServer() {
                         {(user?.role === "admin" || user?.role === "owner") && renderReviewRow('NODE ID', state.node || '—')}
                         {renderReviewRow('SOFTWARE', SOFTWARE.find(s => s.id === state.software)?.name || 'Unknown')}
                         {renderReviewRow('VERSION', state.version || 'latest')}
-                        {!['nodejs', 'python'].includes(state.software) && renderReviewRow('JAVA RUNTIME', `Java ${getJavaVersionForMinecraft(state.version, state.software)} (Auto-detected)`)}
                         
                         <div className="px-4 py-4">
                           <div className="flex justify-between text-[10px] text-[#4c4c4c] tracking-widest mb-2 font-mono">

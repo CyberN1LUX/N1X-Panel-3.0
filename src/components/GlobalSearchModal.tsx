@@ -40,8 +40,8 @@ const STATIC_NAV_LINKS: QuickLink[] = [
   },
   {
     id: "nav-create",
-    title: "Deploy Server",
-    subtitle: "Create new Minecraft or game server",
+    title: "Deploy Application",
+    subtitle: "Create new Node.js or Python application",
     category: "Action",
     icon: <Plus className="w-4 h-4 text-theme-500" />,
     path: "/servers/create"

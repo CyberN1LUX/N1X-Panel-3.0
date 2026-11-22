@@ -1,8 +1,7 @@
 import express from "express";
 import path from "path";
-import { importWorld, getWorldInfo, analyzeWorld } from "../controllers/world.js";
 import { requireAuth } from "../middleware/auth.js";
-import { getServers, createServer, checkPort, getServer, deleteServer, startServer, stopServer, restartServer, killServer, changeServerVersion, updateRuntime, migrateServerRuntime, getFiles, uploadFile, uploadChunk, completeUpload, deleteFile, renameFile, saveFileContent, sendCommand, getServerStats, updateOwner, updateIpAlias, getBackups, createBackup, downloadBackup, deleteBackup, restoreBackup, unzipFile, zipFiles, installPlugin, installMod, getInstalledPlugins, deleteInstalledPlugin, getInstalledMods, deleteInstalledMod, getModrinthProjectVersions, updateResources, updateSuspend , createFile, createDirectory, downloadFile} from "../controllers/servers.js";
+import { getServers, createServer, checkPort, getServer, deleteServer, startServer, stopServer, restartServer, killServer, changeServerVersion, updateRuntime, migrateServerRuntime, getFiles, uploadFile, uploadChunk, completeUpload, deleteFile, renameFile, saveFileContent, sendCommand, getServerStats, updateOwner, updateIpAlias, getBackups, createBackup, downloadBackup, deleteBackup, restoreBackup, unzipFile, zipFiles, updateResources, updateSuspend , createFile, createDirectory, downloadFile} from "../controllers/servers.js";
 import multer from "multer";
 import fs from "fs-extra";
 
@@ -56,9 +55,6 @@ router.post("/:id/files/save", saveFileContent);
 router.post("/:id/files/create", createFile);
 router.post("/:id/files/mkdir", createDirectory);
 router.post("/:id/files/unzip", unzipFile);
-router.post("/:id/world/analyze", analyzeWorld);
-router.post("/:id/world/import", importWorld);
-router.get("/:id/world/info", getWorldInfo);
 router.post("/:id/files/zip", zipFiles);
 router.delete("/:id/files", deleteFile);
 
@@ -373,15 +369,5 @@ router.delete("/:id/sftp", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-router.post("/:id/plugins/install", installPlugin);
-router.get("/:id/plugins/installed", getInstalledPlugins);
-router.delete("/:id/plugins/:filename", deleteInstalledPlugin);
-
-router.post("/:id/mods/install", installMod);
-router.get("/:id/mods/installed", getInstalledMods);
-router.delete("/:id/mods/:filename", deleteInstalledMod);
-
-router.get("/:id/modrinth/versions/:projectId", getModrinthProjectVersions);
 
 export default router;
